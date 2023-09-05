@@ -34,7 +34,10 @@ class MattingNetwork(Model):
             self.refiner = FastGuidedFilterRefiner()
     
     def call(self, inputs):
-        src, *rec, downsample_ratio = inputs
+        # src, *rec, downsample_ratio = inputs
+        src, rec1, rec2, rec3, rec4 = inputs
+
+        downsample_ratio = tf.constant(0.25)
 
         src_sm = tf.cond(downsample_ratio == 1,
             lambda: src,
@@ -42,7 +45,7 @@ class MattingNetwork(Model):
         
         f1, f2, f3, f4 = self.backbone(src_sm)
         f4 = self.aspp(f4)
-        hid, *rec = self.decoder([src_sm, f1, f2, f3, f4, *rec])
+        hid, rec1, rec2, rec3, rec4 = self.decoder([src_sm, f1, f2, f3, f4, rec1, rec2, rec3, rec4])
         out = self.project_mat(hid)
         fgr_residual, pha = tf.split(out, [3, 1], -1)
         
@@ -53,7 +56,7 @@ class MattingNetwork(Model):
         fgr = fgr_residual + src
         fgr = tf.clip_by_value(fgr, 0, 1)
         pha = tf.clip_by_value(pha, 0, 1)
-        return fgr, pha, *rec
+        return fgr, pha, rec1, rec2, rec3, rec4
     
     def _downsample(self, x, downsample_ratio):
         size = tf.shape(x)[1:3]
